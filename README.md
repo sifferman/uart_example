@@ -30,9 +30,9 @@ make icestorm_icebreaker_flash
 # First, program the Icebreaker
 # Assuming the icebreaker is connected to /dev/ttyUSB1:
 
-# Set Icebreaker communication to raw mode
-stty -F /dev/ttyUSB1 raw -echo
-# Continuously read data from Icebreaker (format as 4-byte hex)
+# Set Icebreaker FTDI to 9600 baud, 8 data bits, 1 stop bit, no pairity, and no extra processing
+stty -F /dev/ttyUSB1 9600 cs8 -cstopb -parenb raw -echo
+# Continuously read data from Icebreaker FTDI (format as 4-byte hex)
 cat /dev/ttyUSB1 | xxd -p -c 4 &
 # Send multiplication command to Icebreaker (2 × 4)
 printf "\x00\x00\x00\x02\x00\x00\x00\x04" > /dev/ttyUSB1
