@@ -22,7 +22,10 @@ initial begin
     runner.send_byte(8'h0);
     runner.send_byte(8'h4);
 
-    runner.delay(5.0);
+    runner.read_byte();
+    runner.read_byte();
+    runner.read_byte();
+    runner.read_byte();
 
     $display( "End simulation." );
     $finish;

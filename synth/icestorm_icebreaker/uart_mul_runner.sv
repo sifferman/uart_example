@@ -2,7 +2,7 @@
 module uart_mul_runner;
 
 logic clk_12;
-logic rst_ni;
+logic rst_ni = 0;
 logic rx_i;
 logic tx_o;
 
@@ -33,78 +33,53 @@ initial begin
     end
 end
 
-localparam shortint Prescale = shortint'((1.0 * ClockFrequency) / (8.0 * DesiredBaudRate));
-
-logic [7:0] uart_rx_data;
-logic       uart_rx_ready;
-logic       uart_rx_valid;
-
-uart_rx #(
-    .DATA_WIDTH(8)
-) uart_rx (
-    .clk(clk_12),
-    .rst(!rst_ni),
-
-    .m_axis_tdata(uart_rx_data),
-    .m_axis_tvalid(uart_rx_valid),
-    .m_axis_tready(1),
-
-    .rxd(tx_o),
-
-    .busy(),
-    .overrun_error(),
-    .frame_error(),
-
-    .prescale(Prescale)
-);
-
-logic [7:0] uart_tx_data;
-logic       uart_tx_ready;
-logic       uart_tx_valid = 0;
-
-uart_tx #(
-    .DATA_WIDTH(8)
-) uart_tx (
-    .clk(clk_12),
-    .rst(!rst_ni),
-
-    .s_axis_tdata(uart_tx_data),
-    .s_axis_tvalid(uart_tx_valid),
-    .s_axis_tready(uart_tx_ready),
-
-    .txd(rx_i),
-
-    .busy(),
-
-    .prescale(Prescale)
-);
-
 task automatic reset;
-    rst_ni = 0;
+    rst_ni <= 0;
+    received_data <= '{};
     @(posedge clk_12); #1ps;
-    rst_ni = 1;
+    rst_ni <= 1;
 endtask
 
-task automatic send_byte(byte data);
+task automatic send_byte(logic [7:0] data);
+    logic [9:0] frame = {1'b1, data, 1'b0};
     $display("Sending: %h", data);
-    #1ps;
-    uart_tx_data = data;
-    uart_tx_valid = 1;
-    while (!uart_tx_ready) @(posedge clk_12); #1ps;
-    @(posedge clk_12); #1ps;
-    uart_tx_valid = 0;
-    uart_tx_data = 'x;
+    for (int i = 0; i < 10; i++) begin
+        rx_i <= frame[i];
+        #(1s / DesiredBaudRate);
+    end
 endtask
 
-always @(posedge clk_12) begin
-    if (uart_rx_valid)
-        $display("Received: %h", uart_rx_data);
+logic [7:0] received_data [$];
+always begin
+    logic [9:0] frame;
+    logic [7:0] data;
+    logic start, stop;
+    if (rst_ni == 0) @(posedge rst_ni);
+    if (tx_o == 1) @(negedge tx_o);
+
+    #(0.5s / DesiredBaudRate);
+    for (int i = 0; i < 9; i++) begin
+        frame[i] = tx_o;
+        #(1s / DesiredBaudRate);
+    end
+    frame[9] = tx_o;
+    #(0.5s / DesiredBaudRate);
+
+    {stop, data, start} = frame;
+    if (start != 1'b0 || stop != 1'b1) begin
+        $warning("Unexpected start=%b data=%h stop=%b", start, data, stop);
+        data = 'x;
+    end
+    received_data.push_back(data);
 end
 
-task automatic delay(real d);
-    int num_cycles = 8*Prescale * 10 * d;
-    while (num_cycles--) @(posedge clk_12);
-    #1ps;
+task automatic read_byte();
+    logic [7:0] data;
+    while (received_data.size() == 0) begin
+        @(received_data.size());
+    end
+    data = received_data.pop_front();
+    $display("Read: %h", data);
 endtask
 
 endmodule
