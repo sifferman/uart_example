@@ -18,7 +18,8 @@ wire       uart_rx_ready;
 localparam shortint Prescale = shortint'((1.0 * ClockFrequency) / (8.0 * DesiredBaudRate));
 localparam real ActualBaudRate = (1.0 * ClockFrequency) / (8.0 * Prescale);
 localparam real BaudRateError = 1.0 - (ActualBaudRate / (1.0 * DesiredBaudRate));
-if (BaudRateError < -0.05 || BaudRateError > 0.05) $error("DesiredBaudRate not attainable given ClockFrequency.");
+if (BaudRateError < -0.05 || BaudRateError > 0.05)
+    $error("DesiredBaudRate not attainable given ClockFrequency: BaudRateError=%2.0f%%.", 100*BaudRateError);
 
 uart_rx #(
     .DATA_WIDTH(8)
