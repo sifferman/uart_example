@@ -14,8 +14,11 @@ wire [7:0] uart_rx_data;
 wire       uart_rx_valid;
 wire       uart_rx_ready;
 
-// https://www.desmos.com/calculator/crkhuh8c29
+// https://www.desmos.com/calculator/c9lqrtgpbk
 localparam shortint Prescale = shortint'((1.0 * ClockFrequency) / (8.0 * DesiredBaudRate));
+localparam real ActualBaudRate = (1.0 * ClockFrequency) / (8.0 * Prescale);
+localparam real BaudRateError = 1.0 - (ActualBaudRate / (1.0 * DesiredBaudRate));
+if (BaudRateError < -0.05 || BaudRateError > 0.05) $error("DesiredBaudRate not attainable given ClockFrequency.");
 
 uart_rx #(
     .DATA_WIDTH(8)
